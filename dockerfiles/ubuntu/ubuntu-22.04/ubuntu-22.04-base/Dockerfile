@@ -1,6 +1,7 @@
 # ubuntu-22.04-base
 # Copyright (C) 2020-2021 Intel Corporation
 # Copyright (C) 2022 Konsulko Group
+# Copyright (C) 2025 Updated for Yocto Scarthgap
 #
 # SPDX-License-Identifier: GPL-2.0-only
 #
@@ -13,7 +14,7 @@ RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
         gawk \
         wget \
-        git-core \
+        git \
         subversion \
         diffstat \
         unzip \
@@ -26,7 +27,8 @@ RUN apt-get update && \
         python3-pip \
         python3-pexpect \
         python3-virtualenv \
-        xz-utils  \
+        python3-websockets \
+        xz-utils \
         locales \
         cpio \
         screen \
@@ -37,14 +39,18 @@ RUN apt-get update && \
         python3-jinja2 \
         libegl1-mesa \
         libsdl1.2-dev \
-        pylint \
+        python3-pylint \
         xterm \
         iproute2 \
         fluxbox \
         tightvncserver \
         lz4 \
         zstd \
-        file && \
+        file \
+        bmap-tools \
+        vim \
+        bash-completion \
+        tree && \
     case ${TARGETPLATFORM} in \
         "linux/amd64") \
             DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -52,9 +58,11 @@ RUN apt-get update && \
                 g++-multilib \
             ;; \
     esac && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
     cp -af /etc/skel/ /etc/vncskel/ && \
     echo "export DISPLAY=1" >>/etc/vncskel/.bashrc && \
-    mkdir  /etc/vncskel/.vnc && \
+    mkdir /etc/vncskel/.vnc && \
     echo "" | vncpasswd -f > /etc/vncskel/.vnc/passwd && \
     chmod 0600 /etc/vncskel/.vnc/passwd && \
     useradd -U -m yoctouser && \
@@ -62,11 +70,15 @@ RUN apt-get update && \
     echo 'dash dash/sh boolean false' | debconf-set-selections && \
     DEBIAN_FRONTEND=noninteractive dpkg-reconfigure dash
 
-COPY build-install-dumb-init.sh /
-RUN  bash /build-install-dumb-init.sh && \
-     rm /build-install-dumb-init.sh && \
-     apt-get clean
+# Install dumb-init directly
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y dumb-init && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+ENV LANG=en_US.UTF-8
+ENV LC_ALL=en_US.UTF-8
 
 USER yoctouser
 WORKDIR /home/yoctouser
-CMD /bin/bash
+CMD ["/usr/bin/dumb-init", "/bin/bash"]
